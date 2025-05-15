@@ -341,7 +341,6 @@ img {
     display: block;
     margin: 2rem auto;
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     transition: transform 0.2s ease;
 }
 
@@ -351,12 +350,13 @@ img:hover {
 
 /* Container for images to maintain aspect ratio */
 .block p:has(img) {
-    margin: 2rem -2rem;  /* Negative margin to allow full-width images */
+    margin: 2rem -1rem;  /* Negative margin for full-width effect */
     text-align: center;
+    width: 100%;
 }
 
 .block p:has(img) img {
-    max-height: 80vh;
+    max-height: 60vh;
     object-fit: contain;
     margin: 0 auto;
     width: 100%;
@@ -371,17 +371,6 @@ img:hover {
     font-size: 0.9em;
 }
 
-/* Responsive image handling */
-@media (max-width: 768px) {
-    .block p:has(img) {
-        margin: 1.5rem -1rem;  /* Smaller negative margin on mobile */
-    }
-
-    .block p:has(img) img {
-        max-height: 60vh;
-    }
-}
-
 /* Large screens */
 @media (min-width: 1200px) {
     .block p:has(img) {
@@ -393,7 +382,6 @@ img:hover {
     .block p:has(img) img {
         max-width: min(1200px, 90vw);  /* Limit maximum width while maintaining responsiveness */
         width: auto;
-        height: auto;
     }
 }
 
