@@ -46,11 +46,13 @@ h1::after {
 }
 
 h1::before {
-    left: 20px;
+    left: 0px;
+    padding-left: 1em;
 }
 
 h1::after {
-    right: 20px;
+    right: 0px;
+    padding-right: 1em;
     transform: scaleX(-1);
 }
 
