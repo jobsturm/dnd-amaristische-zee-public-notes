@@ -39,8 +39,7 @@ h1::after {
     font-size: 24pt;
     color: #7a200d;
     position: absolute;
-    bottom: -12px;
-    background: white;
+    bottom: -19px;
     padding: 0 10px;
 }
 
