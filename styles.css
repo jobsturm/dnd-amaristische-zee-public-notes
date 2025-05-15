@@ -356,7 +356,7 @@ img:hover {
 }
 
 .block p:has(img) img {
-    max-height: 60vh;
+    max-height: 95vh;
     object-fit: contain;
     margin: 0 auto;
     width: 100%;
@@ -371,19 +371,6 @@ img:hover {
     font-size: 0.9em;
 }
 
-/* Large screens */
-@media (min-width: 1200px) {
-    .block p:has(img) {
-        margin: 2rem calc(-50vw + 600px);  /* Center full-width images */
-        width: 100vw;
-        max-width: none;
-    }
-
-    .block p:has(img) img {
-        max-width: min(1200px, 90vw);  /* Limit maximum width while maintaining responsiveness */
-        width: auto;
-    }
-}
 
 /* Hierarchy Section */
 .hierarchy-section {

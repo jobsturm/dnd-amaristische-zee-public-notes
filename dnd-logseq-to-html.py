@@ -13,6 +13,11 @@ from urllib.parse import unquote
 from pathlib import Path
 from PIL import Image
 import io
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich import print as rprint
+from rich.panel import Panel
+from rich.text import Text
 
 # === API CONFIGURATION ===
 API_URL = "http://127.0.0.1:12315/api"
@@ -30,22 +35,35 @@ CSS_FILE = "styles.css"  # CSS file name
 # Logseq assets configuration - set your primary assets location here
 LOGSEQ_ASSETS_PATH = "/Users/job/Library/CloudStorage/SynologyDrive-on-demand/database/assets"
 
-# === API HELPER FUNCTIONS ===
+# Initialize rich console
+console = Console()
+
+def log_success(message):
+    console.print(f"[green]✓[/green] {message}")
+
+def log_info(message):
+    console.print(f"[blue]ℹ[/blue] {message}")
+
+def log_warning(message):
+    console.print(f"[yellow]⚠[/yellow] {message}")
+
+def log_error(message):
+    console.print(f"[red]✗[/red] {message}")
+
 def api_call(method, args):
     """Make an API call to Logseq."""
     payload = {"method": method, "args": args}
     try:
-        print(f"Making API call: {method} with args: {args}")
-        response = requests.post(API_URL, headers=HEADERS, json=payload)
-        if response.ok:
-            result = response.json()
-            print(f"API call successful: {method}")
-            return result
-        else:
-            print(f"API call error for {method}: {response.text}")
-            return None
+        with console.status(f"[blue]Making API call: [cyan]{method}[/cyan]...", spinner="dots"):
+            response = requests.post(API_URL, headers=HEADERS, json=payload)
+            if response.ok:
+                log_success(f"API call successful: {method}")
+                return response.json()
+            else:
+                log_error(f"API call error for {method}: {response.text}")
+                return None
     except Exception as e:
-        print(f"Exception during API call: {e}")
+        log_error(f"Exception during API call: {e}")
         return None
 
 def get_page_property(page, property_name):
@@ -90,30 +108,34 @@ def get_public_pages():
     public_pages = {}
     processed_pages = set()  # To avoid processing the same page multiple times
 
-    def add_page(page):
-        if not page:
-            return
-        uuid = page.get("uuid")
-        title = (page.get("name") or page.get("title", "")).strip()
-        if uuid and title and title not in processed_pages:
-            processed_pages.add(title)
-            public_pages[title] = {
-                "uuid": uuid,
-                "title": title,
-                "has_public_children": is_public_children(page)
-            }
+    with console.status("[cyan]Processing pages...", spinner="dots") as status:
+        def add_page(page):
+            if not page:
+                return
+            uuid = page.get("uuid")
+            title = (page.get("name") or page.get("title", "")).strip()
+            page_id = page.get("id")  # Get the page ID (it's an integer)
+            if uuid and title and page_id is not None and title not in processed_pages:
+                processed_pages.add(title)
+                public_pages[title] = {
+                    "uuid": uuid,
+                    "title": title,
+                    "id": page_id,
+                    "has_public_children": is_public_children(page)
+                }
+                console.print(f"[green]✓[/green] Added page: {title} (ID: {page_id})")
 
-    # First pass: collect directly public pages and pages with public children
-    for page in pages:
-        title = (page.get("name") or page.get("title", "")).strip()
-        if is_page_public(page):
-            add_page(page)
-            
-            # If this page has public children, add all nested pages
-            if is_public_children(page):
-                nested_pages = get_nested_pages(title)
-                for nested_page in nested_pages:
-                    add_page(nested_page)
+        # First pass: collect directly public pages and pages with public children
+        for page in pages:
+            title = (page.get("name") or page.get("title", "")).strip()
+            if is_page_public(page):
+                add_page(page)
+                
+                # If this page has public children, add all nested pages
+                if is_public_children(page):
+                    nested_pages = get_nested_pages(title)
+                    for nested_page in nested_pages:
+                        add_page(nested_page)
 
     return public_pages
 
@@ -183,6 +205,14 @@ def get_first_sentence(page_name):
         return first_sentence
     return ""
 
+def get_page_filename(page_info):
+    """Get the filename for a page using its ID."""
+    page_id = page_info.get("id")
+    if page_id is None:
+        # Fallback to sanitized title if no ID is available
+        return f"{sanitize_filename(page_info['title'])}.html"
+    return f"page_{page_id}.html"
+
 def generate_index_page(public_pages):
     """Generate an index page with links to all public pages."""
     html = f"""<!DOCTYPE html>
@@ -203,7 +233,7 @@ def generate_index_page(public_pages):
     sorted_pages = sorted(public_pages.items(), key=lambda x: x[0])
     
     for title, page_info in sorted_pages:
-        safe_name = sanitize_filename(title)
+        filename = get_page_filename(page_info)
         # Get the last part of the path for display
         display_title = title.split('/')[-1].replace('_', ' ').title()
         
@@ -211,7 +241,7 @@ def generate_index_page(public_pages):
         first_sentence = get_first_sentence(title)
         
         html += f"""
-                <a href="{safe_name}.html" class="page-list-item">
+                <a href="{filename}" class="page-list-item">
                     <div class="page-list-content">
                         <h3>{display_title}</h3>"""
         
@@ -261,9 +291,10 @@ def generate_hierarchy_section(title, public_pages):
     html += '<ul class="hierarchy-list">\n'
     
     for child in children:
-        safe_name = sanitize_filename(child)
+        child_info = public_pages[child]
+        filename = get_page_filename(child_info)
         display_name = child.split('/')[-1].replace('_', ' ').title()
-        html += f'<li><a href="{safe_name}.html">{display_name}</a></li>\n'
+        html += f'<li><a href="{filename}">{display_name}</a></li>\n'
     
     html += '</ul>\n</section>\n'
     return html
@@ -713,7 +744,7 @@ def generate_html_file(title, content, public_pages):
 </html>"""
     
     # Write to file
-    filename = f"{sanitize_filename(title)}.html"
+    filename = get_page_filename(public_pages[title])
     filepath = os.path.join(OUTPUT_DIR, filename)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html)
@@ -725,8 +756,8 @@ def resolve_links_for_html(content, public_pages):
     def repl(match):
         page_name = match.group(1)
         if page_name in public_pages:
-            safe_name = sanitize_filename(page_name)
-            return f'<a href="{safe_name}.html">{page_name}</a>'
+            safe_name = get_page_filename(public_pages[page_name])
+            return f'<a href="{safe_name}">{page_name}</a>'
         # For non-public pages, use a span with a special class
         return f'<span class="non-public-link">{page_name}</span>'
     
@@ -866,7 +897,7 @@ def main():
             continue
         
         # Write to file
-        filename = f"{sanitize_filename(title)}.html"
+        filename = get_page_filename(page_info)
         filepath = os.path.join(OUTPUT_DIR, filename)
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(html_content)
