@@ -39,6 +39,7 @@ h1::after {
     content: "❧";
     font-size: 24pt;
     color: #7a200d;
+    background-color: white;
     position: absolute;
     bottom: -19px;
     padding: 0 10px;
