@@ -437,7 +437,6 @@ img:hover {
 
 .hierarchy-list a:hover {
     transform: translateX(4px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     border-bottom-color: #2a2a2a;
 }
 
